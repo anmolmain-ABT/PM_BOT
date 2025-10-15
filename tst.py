@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import logging
+import json
 # --------------------- Load environment variables ---------------------
 load_dotenv()
 
@@ -32,17 +33,37 @@ slack_client = WebClient(token=SLACK_BOT_TOKEN)
 app = App(token=SLACK_BOT_TOKEN)
 cached_df = None
 
+def keep_alive():
+    url = os.getenv("RENDER_APP_URL")  # Add your Render URL in .env as RENDER_APP_URL
+    if not url:
+        print("RENDER_APP_URL not set in .env")
+        return
+    while True:
+        try:
+            print(f"Pinging {url} to keep alive...")
+            requests.get(url, timeout=10)
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+        time.sleep(30 * 60)  # Ping every 5 minutes
+        
+
 # --------------------- Google Sheets ---------------------
 def get_gsheet_client():
-    if GOOGLE_CREDENTIALS_FILE is None:
-        raise ValueError("GOOGLE_CREDENTIALS_FILE path is not set in .env")
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if not creds_json:
+        raise ValueError("GOOGLE_CREDENTIALS_JSON is not set in .env")
+
+    # Load the JSON from the environment variable
+    creds_dict = json.loads(creds_json)
+
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive.file",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_FILE, scope)
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client
 
@@ -50,11 +71,14 @@ def write_to_sheet(df):
     client = get_gsheet_client()
     sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
 
-    # Convert datetime columns to string in MM/DD/YYYY format
     df_to_write = df.copy()
     for col in df_to_write.select_dtypes(include=['datetime', 'datetime64[ns]']):
         df_to_write[col] = df_to_write[col].dt.strftime("%m/%d/%Y")
 
+    df_to_write = df_to_write.fillna("NA")  # replace NaN with 'NA'
+    df_to_write = df_to_write.replace(r'^\s*$', 'NA', regex=True)  # replace empty strings
+
+    # Write to Google Sheet
     sheet.clear()
     sheet.update([df_to_write.columns.values.tolist()] + df_to_write.values.tolist())
 
@@ -67,6 +91,8 @@ def read_from_sheet():
 
 # --------------------- Clockify Download ---------------------
 def download_clockify_data(since_date=None):
+    logging.info("Downloading clockify Sheet")
+    print("Downloading clockify Sheet")
     today = date.today()
     start_date = (since_date.isoformat() + "T00:00:00Z") if since_date else ((today - timedelta(days=120)).isoformat() + "T00:00:00Z")
     end_date = today.isoformat() + "T23:59:59Z"
@@ -128,6 +154,8 @@ def download_clockify_data(since_date=None):
 
 # --------------------- Load & Cache Data ---------------------
 def load_data(channel_id=None):
+    logging.info("Loading clockify sheet data")
+    print("Loading clockify sheet data")
     global cached_df
     if cached_df is not None:
         return cached_df
@@ -143,38 +171,63 @@ def load_data(channel_id=None):
             logging.warning(f"Failed to send Slack message: {e}")
 
     logging.info("Preloading Clockify data...")
+    print("Preloading Clockify data...")
+
 
     try:
         df_existing = read_from_sheet()
         if df_existing.empty:
             df_combined = download_clockify_data()
         else:
-            df_existing['end date'] = pd.to_datetime(df_existing['end date'], format="%m/%d/%Y", errors='coerce')
+            # Let pandas infer date format automatically
+            df_existing['end date'] = pd.to_datetime(df_existing['end date'], errors='coerce')
             last_date = df_existing['end date'].max()
             df_new = download_clockify_data(since_date=last_date + timedelta(days=1))
             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     except Exception:
         df_combined = download_clockify_data()
 
-    df_combined.columns = [str(col).lower() for col in df_combined.columns]
+    # Standardize column names
+    print("Standardize column names")
+    logging.info("Standardize column names")
+    df_combined.columns = [str(col).casefold() for col in df_combined.columns]
+
+    # Convert string columns to lowercase
+    print("Convert string columns to lowercase")
+    logging.info("Convert string columns to lowercase")
     str_cols = df_combined.select_dtypes(include=['object']).columns
-    df_combined[str_cols] = df_combined[str_cols].apply(lambda x: x.str.lower())
+    df_combined[str_cols] = df_combined[str_cols].apply(lambda x: x.str.casefold())
+
+    # Clean user column
     if 'user' in df_combined.columns:
         df_combined['user'] = df_combined['user'].str.replace('.', ' ', regex=False)
+
+    # Convert date columns robustly
     for col in ['start date', 'end date']:
         if col in df_combined.columns:
-            df_combined[col] = pd.to_datetime(df_combined[col], format="%m/%d/%Y", errors='coerce')
+            df_combined[col] = pd.to_datetime(df_combined[col], errors='coerce')
+
+    # Ensure duration is numeric
     if 'duration' in df_combined.columns:
         df_combined['duration'] = pd.to_numeric(df_combined['duration'], errors='coerce')
+
+    # Fill missing task with description
     if 'description' in df_combined.columns and 'task' in df_combined.columns:
         df_combined['task'] = df_combined.apply(
-        lambda row: row['description'] if pd.isna(row['task']) or row['task'] == '' else row['task'],
-        axis=1
+            lambda row: row['description'] if pd.isna(row['task']) or row['task'] == '' else row['task'],
+            axis=1
         )
+    df_combined['description'] = df_combined['description'].replace('', 'NA').fillna('NA')
+    df_combined['task'] = df_combined['task'].replace('', 'NA').fillna('NA')
+    df_combined['tags'] = df_combined['tags'].replace('', 'NA').fillna('NA')
+    df_combined['client'] = df_combined['client'].replace('', 'NA').fillna('NA')
 
+
+    # Write to sheet and update cache
     write_to_sheet(df_combined)
     cached_df = df_combined
     return df_combined
+
 
 # --------------------- GPT Query Handling ---------------------
 def gpt_response(input_str):
@@ -262,7 +315,7 @@ def sudo_download_file_command(channel_id):
     try:
         # Force download Clockify data from scratch
         df_fresh = download_clockify_data(since_date=None)  # Download all data
-        df_fresh.columns = [str(col).lower() for col in df_fresh.columns]
+        df_fresh.columns = [str(col).casefold() for col in df_fresh.columns]
         write_to_sheet(df_fresh)
         global cached_df
         cached_df = df_fresh  # Update cache
@@ -285,19 +338,22 @@ def sudo_download_file_command(channel_id):
 @app.event("message")
 def handle_message(message, say):
     user_text = message.get("text")
+    logging.info(f"Query : {user_text}")
+    print(f"Query : {user_text}")
     if not user_text:
         logging.warning("Empty message received. Ignoring.")
+        print("Empty message received. Ignoring.")
         return
 
-    prompt = user_text.lower()
+    prompt = str(user_text).casefold()
     channel_id = message.get("channel")
 
     # ---------------- Force refresh command ----------------
-    if user_text.strip().lower() == "sudo downloadfiledatatilltoday":
+    if user_text.strip().casefold() == "sudo downloadfiledatatilltoday":
         logging.info("Received sudo command to force data refresh.")
         sudo_download_file_command(channel_id)
         return 
-    data = load_data()
+    data = load_data(channel_id)
 
     processing_message = app.client.chat_postMessage(
         channel=channel_id,
@@ -310,6 +366,8 @@ def handle_message(message, say):
         try:
             raw_code = gpt_response(user_text)
             pandas_code = clean_gpt_code(raw_code)
+            print(pandas_code)
+            logging.info(pandas_code)
             local_vars = {"df": data}
             try:
                 exec(pandas_code, {}, local_vars)
@@ -327,6 +385,7 @@ def handle_message(message, say):
                 result = str(answer)
             summarized = summarizer(result, prompt)
             logging.info(summarized.capitalize())
+            print(summarized.capitalize())
 
             app.client.chat_update(
                 channel=channel_id,
@@ -342,7 +401,7 @@ def handle_message(message, say):
                 app.client.chat_update(
                     channel=channel_id,
                     ts=processing_message["ts"],
-                    text=f"❌ Failed to process your request: {e}"
+                    text=f"❌ Failed to process your request: {e} {e.with_traceback}"
                 )
 
 
