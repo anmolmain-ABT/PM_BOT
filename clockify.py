@@ -216,7 +216,9 @@ def load_data(channel_id=None):
     return df_combined
 
 # --------------------- GPT Query Handling ---------------------
-def gpt_response(input_str):
+def gpt_response(input_str,channel_id):
+    slack_log(f"Input STR to GPT : {input_str}", channel_id, "info")
+
     # logging.info(input_str)
     response = openai.ChatCompletion.create(
         engine="gpt-4o",
@@ -268,6 +270,8 @@ def gpt_response(input_str):
              """}
         ]
     )
+    slack_log(f"RESPONSE FROM GPT : {response.choices[0].message.content}", channel_id, "info")
+
     return response.choices[0].message.content
 def summarizer(table, user_query):
     response = openai.ChatCompletion.create(
@@ -316,6 +320,7 @@ def sudo_download_file_command(channel_id):
 @app.event("message")
 def handle_message(message, say):
     user_text = message.get("text")
+    print(user_text)
     channel_id = message.get("channel")
     slack_log(f"Query: {user_text}", channel_id)
     if not user_text:
@@ -340,9 +345,9 @@ def handle_message(message, say):
 
     for attempt in range(1, retries + 1):
         try:
-            slack_log(user_text, channel_id)
-            raw_code = gpt_response(user_text)
-            slack_log(raw_code, channel_id, "info")
+            slack_log(f" User Text : {user_text}", channel_id)
+            raw_code = gpt_response(user_text,channel_id)
+            slack_log(f"Raw Code : {raw_code}", channel_id, "info")
 
             pandas_code = clean_gpt_code(raw_code, channel_id)
             local_vars = {"df": data}
@@ -356,7 +361,7 @@ def handle_message(message, say):
             answer = local_vars.get("answer", "No answer returned.")
             result = answer.to_string(index=False) if isinstance(answer, pd.DataFrame) else str(answer)
             summarized = summarizer(result, prompt)
-            slack_log(summarized, channel_id, "info")
+            slack_log(f"{summarized}", channel_id, "info")
 
             slack_log(summarized.capitalize(), channel_id)
 
