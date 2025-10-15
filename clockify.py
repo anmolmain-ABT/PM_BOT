@@ -309,6 +309,8 @@ def handle_message(message, say):
         return
 
     prompt = user_text.lower()
+    print(prompt)
+    logging.info(f"User Query : {prompt}")
 
     # ---------------- Force refresh command ----------------
     if user_text.strip().lower() == "sudo downloadfiledatatilltoday":
@@ -317,10 +319,15 @@ def handle_message(message, say):
         return 
     data = load_data(channel_id)
 
-    retries = 5
+    retries = 10
     delay = 2
     for attempt in range(1, retries + 1):
         try:
+            if attempt>=5:
+                processing_message = app.client.chat_postMessage(
+                channel=channel_id,
+                text="💭 Seems a complex query... please wait."
+            )
             raw_code = gpt_response(user_text)
             pandas_code = clean_gpt_code(raw_code)
             local_vars = {"df": data}
