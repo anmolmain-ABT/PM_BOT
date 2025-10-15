@@ -157,7 +157,7 @@ def load_data(channel_id=None):
     # Send Slack message if channel_id is provided
     if channel_id:
         try:
-            app.client.chat_postMessage(
+            app.client.chat_update(
                 channel=channel_id,
                 text="💾 Fetching and preparing Clockify data, please wait..."
             )
