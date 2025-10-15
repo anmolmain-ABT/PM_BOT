@@ -299,6 +299,10 @@ def sudo_download_file_command(channel_id):
 @app.event("message")
 def handle_message(message, say):
     user_text = message.get("text")
+    processing_message = app.client.chat_postMessage(
+        channel=channel_id,
+        text="💭 Processing your request... please wait."
+    )
     if not user_text:
         logging.warning("Empty message received. Ignoring.")
         return
@@ -313,10 +317,6 @@ def handle_message(message, say):
         return 
     data = load_data()
 
-    processing_message = app.client.chat_postMessage(
-        channel=channel_id,
-        text="💭 Processing your request... please wait."
-    )
     retries = 5
     delay = 2
     for attempt in range(1, retries + 1):
