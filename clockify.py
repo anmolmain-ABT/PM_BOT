@@ -329,6 +329,7 @@ def handle_message(message, say):
 
     data = load_data(channel_id)
     slack_log("Data loaded.", channel_id)
+    slack_log(data.head(10), channel_id)
 
     processing_message = app.client.chat_postMessage(channel=channel_id, text="💭 Processing your request... please wait.")
 
