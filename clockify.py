@@ -13,6 +13,10 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import logging
+import sys
+from enum import Enum
+from typing import Optional
+
 # --------------------- Load environment variables ---------------------
 load_dotenv()
 
