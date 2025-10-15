@@ -15,10 +15,10 @@ import logging
 # --------------------- Load environment variables ---------------------
 load_dotenv()
 
-openai.api_type = os.getenv("openai_api_type")
-openai.api_version = os.getenv("openai_api_version")
-openai.api_base = os.getenv("openai_api_base")
-openai.api_key = os.getenv("openai_api_key")
+openai.api_type = os.getenv("OPENAI_API_TYPE")
+openai.api_version = os.getenv("OPENAI_API_VERSION")
+openai.api_base = os.getenv("OPENAI_API_BASE")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
