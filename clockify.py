@@ -244,7 +244,8 @@ def gpt_response(input_str):
             - Use 'df' as the dataframe variable.
             - Only use the columns that are defined above.
             - Approach and create the query step by step , do not do everything in one go.
-            - If using Pandas in the query Always use import pandas as pd before using it in query .
+            - If using Pandas in the query Always use import pandas as pd before using it in query.
+            - never use .lower() method, always use .casefold() in place of .lower() method
             - If using any other module must import it in the top, because at the end i want to execute the code.
             - Only return the exact answer to the query, nothing more.
             - Do not generate summaries, explanations, or extra text.
