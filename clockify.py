@@ -315,7 +315,7 @@ def handle_message(message, say):
         logging.info("Received sudo command to force data refresh.")
         sudo_download_file_command(channel_id)
         return 
-    data = load_data()
+    data = load_data(channel_id)
 
     retries = 5
     delay = 2
