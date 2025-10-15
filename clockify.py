@@ -219,6 +219,11 @@ def load_data(channel_id=None):
             lambda row: row['description'] if pd.isna(row['task']) or row['task'] == '' else row['task'],
             axis=1
         )
+    df_combined['description'] = df_combined['description'].replace('', 'NA').fillna('NA')
+    df_combined['task'] = df_combined['task'].replace('', 'NA').fillna('NA')
+    df_combined['tags'] = df_combined['tags'].replace('', 'NA').fillna('NA')
+    df_combined['client'] = df_combined['client'].replace('', 'NA').fillna('NA')
+
 
     # Write to sheet and update cache
     write_to_sheet(df_combined)
