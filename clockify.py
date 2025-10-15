@@ -225,7 +225,7 @@ def gpt_response(input_str,channel_id):
 
     # logging.info(input_str)
     response = openai.ChatCompletion.create(
-        engine="gpt-4o",
+        model="gpt-4o",
         messages= [
             {"role": "system", "content": "Assistant is a large language model trained by OpenAI."},
             {"role": "user", "content": f"""
