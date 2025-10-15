@@ -309,7 +309,7 @@ def handle_message(message, say):
         return
 
     prompt = user_text.lower()
-    print(prompt)
+    print(f"User Query : {prompt}")
     logging.info(f"User Query : {prompt}")
 
     # ---------------- Force refresh command ----------------
