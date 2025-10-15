@@ -339,6 +339,7 @@ def handle_message(message, say):
 
     for attempt in range(1, retries + 1):
         try:
+            slack_log(user_text, channel_id)
             raw_code = gpt_response(user_text)
             slack_log(raw_code, channel_id, "info")
 
