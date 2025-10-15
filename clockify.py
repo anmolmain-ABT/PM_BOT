@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import logging
+import threading
+
+
 # --------------------- Load environment variables ---------------------
 load_dotenv()
 
@@ -31,6 +34,25 @@ GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
 app = App(token=SLACK_BOT_TOKEN)
 cached_df = None
+
+# --------------------- Keeping Alive ---------------------
+def keep_alive():
+    website_url = os.getenv("RENDER_URL")  # Add your website URL in .env (e.g., https://your-app.onrender.com)
+    if not website_url:
+        logging.warning("⚠️ RENDER_URL not set in .env, skipping keep-alive pings.")
+        return
+
+    def ping():
+        while True:
+            try:
+                response = requests.get(website_url)
+                logging.info(f"Keep-alive ping sent. Status: {response.status_code}")
+            except Exception as e:
+                logging.error(f"Error during keep-alive ping: {e}")
+            time.sleep(600)  # every 10 minutes (600 seconds)
+
+    thread = threading.Thread(target=ping, daemon=True)
+    thread.start()
 
 # --------------------- Google Sheets ---------------------
 def get_gsheet_client():
@@ -273,9 +295,6 @@ def sudo_download_file_command(channel_id):
             text=f"❌ Failed to refresh data: {e}"
         )
 
-
-
-
 # --------------------- Slack Bot ---------------------
 @app.event("message")
 def handle_message(message, say):
@@ -298,7 +317,6 @@ def handle_message(message, say):
         channel=channel_id,
         text="💭 Processing your request... please wait."
     )
-
     retries = 5
     delay = 2
     for attempt in range(1, retries + 1):
@@ -343,5 +361,6 @@ def handle_message(message, say):
 
 # --------------------- Run Slack Bot ---------------------
 if __name__ == "__main__":
+    keep_alive()  # start keep-alive thread
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
     handler.start()
