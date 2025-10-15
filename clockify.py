@@ -40,6 +40,7 @@ def keep_alive():
     website_url = os.getenv("RENDER_URL")  # Add your website URL in .env (e.g., https://your-app.onrender.com)
     if not website_url:
         logging.warning("⚠️ RENDER_URL not set in .env, skipping keep-alive pings.")
+        print("⚠️ RENDER_URL not set in .env, skipping keep-alive pings.")
         return
 
     def ping():
@@ -47,9 +48,12 @@ def keep_alive():
             try:
                 response = requests.get(website_url)
                 logging.info(f"Keep-alive ping sent. Status: {response.status_code}")
+                print(f"Keep-alive ping sent. Status: {response.status_code}")
             except Exception as e:
                 logging.error(f"Error during keep-alive ping: {e}")
-            time.sleep(600)  # every 10 minutes (600 seconds)
+            time.sleep(300)  # every 10 minutes (600 seconds)
+            print(f"Ping Sent, going to sleep for 5 minutes")
+
 
     thread = threading.Thread(target=ping, daemon=True)
     thread.start()
@@ -157,7 +161,7 @@ def load_data(channel_id=None):
     # Send Slack message if channel_id is provided
     if channel_id:
         try:
-            app.client.chat_update(
+            app.client.chat_postMessage(
                 channel=channel_id,
                 text="💾 Fetching and preparing Clockify data, please wait..."
             )
@@ -368,6 +372,6 @@ def handle_message(message, say):
 
 # --------------------- Run Slack Bot ---------------------
 if __name__ == "__main__":
-    keep_alive()  # start keep-alive thread
+    keep_alive()
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
     handler.start()
