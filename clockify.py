@@ -299,6 +299,7 @@ def sudo_download_file_command(channel_id):
 @app.event("message")
 def handle_message(message, say):
     user_text = message.get("text")
+    channel_id = message.get("channel")
     processing_message = app.client.chat_postMessage(
         channel=channel_id,
         text="💭 Processing your request... please wait."
@@ -308,7 +309,6 @@ def handle_message(message, say):
         return
 
     prompt = user_text.lower()
-    channel_id = message.get("channel")
 
     # ---------------- Force refresh command ----------------
     if user_text.strip().lower() == "sudo downloadfiledatatilltoday":
