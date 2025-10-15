@@ -328,10 +328,14 @@ def handle_message(message, say):
         return
 
     data = load_data(channel_id)
+    slack_log("Data loaded.", channel_id)
+
     processing_message = app.client.chat_postMessage(channel=channel_id, text="💭 Processing your request... please wait.")
 
     retries = 5
     delay = 2
+    slack_log("Attempting to generate Python Script.", channel_id)
+
     for attempt in range(1, retries + 1):
         try:
             raw_code = gpt_response(user_text)
