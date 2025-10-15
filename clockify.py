@@ -66,6 +66,7 @@ def get_gsheet_client():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client
+
 def write_to_sheet(df):
     client = get_gsheet_client()
     sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
@@ -75,6 +76,11 @@ def write_to_sheet(df):
     for col in df_to_write.select_dtypes(include=['datetime', 'datetime64[ns]']):
         df_to_write[col] = df_to_write[col].dt.strftime("%m/%d/%Y")
 
+    # Replace blank or empty strings with 'NA'
+    df_to_write = df_to_write.fillna("NA")  # replace NaN with 'NA'
+    df_to_write = df_to_write.replace(r'^\s*$', 'NA', regex=True)  # replace empty strings
+
+    # Write to Google Sheet
     sheet.clear()
     sheet.update([df_to_write.columns.values.tolist()] + df_to_write.values.tolist())
 
