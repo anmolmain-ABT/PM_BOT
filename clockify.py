@@ -172,6 +172,7 @@ def load_data(channel_id=None):
 
     try:
         df_existing = read_from_sheet()
+        cached_df = df_existing
         if df_existing.empty:
             df_combined = download_clockify_data()
         else:
@@ -321,6 +322,11 @@ def handle_message(message, say):
         logging.info("Received sudo command to force data refresh.")
         sudo_download_file_command(channel_id)
         return 
+    elif user_text.strip().lower() == "sudo refreshdata":
+        df_existing = read_from_sheet()
+        global cached_df
+        cached_df = df_existing
+        return 
     data = load_data(channel_id)
 
     retries = 10
@@ -328,7 +334,7 @@ def handle_message(message, say):
     for attempt in range(1, retries + 1):
         try:
             if attempt>=5:
-                processing_message = app.client.chat_postMessage(
+                processing_message = app.client.chat_update(
                 channel=channel_id,
                 text="💭 Seems a complex query... please wait."
             )
@@ -372,6 +378,6 @@ def handle_message(message, say):
 
 # --------------------- Run Slack Bot ---------------------
 if __name__ == "__main__":
-    keep_alive()
+    # keep_alive()
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
     handler.start()
