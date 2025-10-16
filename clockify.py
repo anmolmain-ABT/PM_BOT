@@ -187,7 +187,7 @@ def load_data(channel_id=None):
     str_cols = df_combined.select_dtypes(include=['object']).columns
     df_combined[str_cols] = df_combined[str_cols].apply(lambda x: x.str.lower())
     if 'user' in df_combined.columns:
-        df_combined['user'] = df_combined['user'].str.replace('.', ' ', regex=False)
+        df_combined['user'] = df_combined['user'].str.replace('.', ' ', regex=False).str.replace(r'\s+', ' ', regex=True).str.strip()
     for col in ['start date', 'end date']:
         if col in df_combined.columns:
             df_combined[col] = pd.to_datetime(df_combined[col], format="%m/%d/%Y", errors='coerce')
@@ -283,11 +283,21 @@ def sudo_download_file_command(channel_id):
     logging.info("Forced data refresh initiated by sudo command...")
     try:
         # Force download Clockify data from scratch
-        df_fresh = download_clockify_data(since_date=None)  # Download all data
-        df_fresh.columns = [str(col).lower() for col in df_fresh.columns]
-        write_to_sheet(df_fresh)
+        df_combined = download_clockify_data(since_date=None)  # Download all data
+        df_combined.columns = [str(col).lower() for col in df_combined.columns]
+        str_cols = df_combined.select_dtypes(include=['object']).columns
+        df_combined[str_cols] = df_combined[str_cols].apply(lambda x: x.str.lower())
+        if 'user' in df_combined.columns:
+            df_combined['user'] = df_combined['user'].str.replace('.', ' ', regex=False).str.replace(r'\s+', ' ', regex=True).str.strip()
+        for col in ['start date', 'end date']:
+            if col in df_combined.columns:
+                df_combined[col] = pd.to_datetime(df_combined[col], format="%m/%d/%Y", errors='coerce')
+        if 'duration' in df_combined.columns:
+            df_combined['duration'] = pd.to_numeric(df_combined['duration'], errors='coerce')
+
+        # write_to_sheet(df_fresh)
         global cached_df
-        cached_df = df_fresh  # Update cache
+        cached_df = df_combined  # Update cache
         logging.info("Forced data refresh completed successfully.")
         app.client.chat_postMessage(
             channel=channel_id,
