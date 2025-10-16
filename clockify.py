@@ -239,7 +239,7 @@ def gpt_response(input_str):
             - If user asks for query related to last Month always look for last Month from Currnet Month, must search by first calculating the dates and then applying query, but not time only date.
             - If user asks for query related to last Qaurter always find the last quarter months acccording to indian financial year system and create query according to these months,must search by first calculating the dates and then applying query, but not time only date.
             - Always include first and last date when querying with week,month or quarter.
-            - Do all date computions in MM-DD-YYYY format only.
+            - Do all date computions in MM/DD/YYYY format only.
             - If user ask to generate query based on task ,description user or project name, always use contains keyword never look for exact match.
             - If user ask to generate query based on hour related to tag , always use exact match never look for contains.
             Input:
