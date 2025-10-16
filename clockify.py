@@ -341,6 +341,7 @@ def handle_message(message, say):
             if attempt>=5:
                 processing_message = app.client.chat_update(
                 channel=channel_id,
+                ts=processing_message["ts"],
                 text="💭 Seems a complex query... please wait."
             )
             raw_code = gpt_response(user_text)
