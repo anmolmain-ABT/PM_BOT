@@ -193,7 +193,8 @@ def load_data(channel_id=None):
             df_combined[col] = pd.to_datetime(df_combined[col], format="%m/%d/%Y", errors='coerce')
     if 'duration' in df_combined.columns:
         df_combined['duration'] = pd.to_numeric(df_combined['duration'], errors='coerce')
-
+    if 'description' in df_combined.columns and 'task' in df_combined.columns:
+            df_combined['task'] = df_combined['description']
     write_to_sheet(df_combined)
     cached_df = df_combined
     return df_combined
@@ -294,7 +295,8 @@ def sudo_download_file_command(channel_id):
                 df_combined[col] = pd.to_datetime(df_combined[col], format="%m/%d/%Y", errors='coerce')
         if 'duration' in df_combined.columns:
             df_combined['duration'] = pd.to_numeric(df_combined['duration'], errors='coerce')
-
+        if 'description' in df_combined.columns and 'task' in df_combined.columns:
+            df_combined['task'] = df_combined['description']
         # write_to_sheet(df_fresh)
         global cached_df
         cached_df = df_combined  # Update cache
