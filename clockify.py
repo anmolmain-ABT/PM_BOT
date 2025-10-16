@@ -326,6 +326,11 @@ def handle_message(message, say):
         df_existing = read_from_sheet()
         global cached_df
         cached_df = df_existing
+        logging.info("data refresh completed successfully.")
+        app.client.chat_postMessage(
+            channel=channel_id,
+            text="✅ Data refresh complete!"
+        )
         return 
     data = load_data(channel_id)
 
